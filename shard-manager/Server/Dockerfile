@@ -1,12 +1,8 @@
 
-FROM flaskdocker-base
-RUN apt-get update
-RUN apt-get install -y \
-    python3-full \
-    python3-pip
-RUN pip install --break-system-packages --upgrade pip
+FROM serverbaseimg
 COPY . /docker-entrypoint-initdb.d/
-# RUN pip install --break-system-packages -r /docker-entrypoint-initdb.d/requirements.txt
+RUN pip install --break-system-packages -r /docker-entrypoint-initdb.d/requirements.txt
+RUN chmod 777  /docker-entrypoint-initdb.d/
 
 
 ENV MYSQL_ROOT_PASSWORD="user12"

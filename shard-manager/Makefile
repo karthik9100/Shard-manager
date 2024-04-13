@@ -17,3 +17,4 @@ stop:
 	docker rmi -f loadbalancer
 	docker rmi -f mysqlserver
 	docker rmi -f my_shard_manager
+	docker volume rm shareddata

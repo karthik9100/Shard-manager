@@ -3,7 +3,7 @@ import sys
 import docker 
 def main1(params):
    
-    cmd = ["docker", "run", "--name", params[1],"--network", params[2], "--network-alias", params[1], "-d",params[3]]
+    cmd = ["docker", "run", "--name", params[1],"--network", params[2], "--network-alias", params[1], "-d","-v", "shareddata:/docker-entrypoint-initdb.d/",params[3]]
     
     try:
         result = subprocess.run(cmd)

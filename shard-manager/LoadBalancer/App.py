@@ -832,6 +832,44 @@ def get_shardid_given_server(connection,server):
         cursor.close()
 
 
+@app.route("/helloread", methods=["POST"])
+def helloread():
+    try:
+        req_payload = request.json
+        server = req_payload['server']
+        shard = req_payload['shard']
+        if not server or not shard:
+            msg = {
+                "message": "Filename is required in the payload",
+                "status": "Failed"
+            }
+            return make_response(jsonify(msg), 400)
+           
+        response = requests.post(f'http://{server}:5000/readlog', json={"filename": f"{shard}_{server}.txt"})
+        return jsonify({
+            "message": response.json().get("message"),
+            "status": response.status_code
+        }), response.status_code
+    except Exception as e:
+        return jsonify({
+            "message": str(e),
+            "status": 500
+        }), 500
+
+@app.route("/hellowrite/<server_name>", methods=["GET"])
+def hellowrite(server_name):
+    try:
+        response = requests.post(f'http://{server_name}:5000/writelog', json={"filename": server_name, "content": f"Hello from load balancer {server_name}"})
+        return jsonify({
+            "message": response.json().get("message"),
+            "status": response.status_code
+        }), response.status_code
+    except Exception as e:
+        return jsonify({
+            "message": str(e),
+            "status": 500
+        }), 500
+
 # continuously check heartbeat
 # Define the heartbeat function
 def heartbeat():

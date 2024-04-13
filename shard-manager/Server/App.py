@@ -44,6 +44,74 @@ db_config = {
 }
 
 
+@app.route("/writelog", methods=["POST"])
+def write_log():
+    try:
+        data = request.get_json()
+        filename = data.get("filename")
+        content = data.get("content")
+
+        if not filename or not content:
+            msg = {
+                "message": "Both filename and content are required in the payload",
+                "status": "Failed"
+            }
+            return make_response(jsonify(msg), 400)
+
+        path = "/docker-entrypoint-initdb.d/"
+        print("writing file ", flush=True)
+        with open(os.path.join(path, filename), "w") as fp:
+            fp.write(content)
+        
+        msg = {
+            "message": f"Successfully wrote to {filename}",
+            "status": "Successful"
+        }
+        return make_response(jsonify(msg), 200)
+    except Exception as e:
+        msg = {
+            "message": str(e),
+            "status": "Failed"
+        }
+        return make_response(jsonify(msg), 500)
+
+@app.route("/readlog", methods=["POST"])
+def read_log():
+    try:
+        data = request.get_json()
+        filename = data.get("filename")
+
+        if not filename:
+            msg = {
+                "message": "Filename is required in the payload",
+                "status": "Failed"
+            }
+            return make_response(jsonify(msg), 400)
+
+        path = "/docker-entrypoint-initdb.d/"
+        print("reading file ", flush=True)
+        with open(os.path.join(path, filename), "r") as fp:
+            data = fp.read()
+        
+        msg = {
+            "message": data,
+            "status": "Successful"
+        }
+        return make_response(jsonify(msg), 200)
+    except FileNotFoundError:
+        msg = {
+            "message": "File not found",
+            "status": "Failed"
+        }
+        return make_response(jsonify(msg), 404)
+    except Exception as e:
+        msg = {
+            "message": str(e),
+            "status": "Failed"
+        }
+        return make_response(jsonify(msg), 500)
+    
+
 def initialize_shard_tables(payload,server_id):
     print("initialize",server_id,flush=True)
     db_config['host'] = server_id
@@ -255,10 +323,15 @@ def read_data(server_id):
 
 
 # writes to log file in the format <transactions_id> <operation> <commited to database or not (0|1)>
-def write_to_log(id,primary,server,message,iscommitted):
+def write_to_log(id,operation, primary,server,message,iscommitted):
     print(f"call to log file {primary}_{server}.txt", flush= True)
-    fp = open(f"{primary}_{server}.txt", 'a+')
-    fp.write(f"{id} {message} {iscommitted}" + '\n')
+    path = "/docker-entrypoint-initdb.d/"
+    print("writing file ", flush=True)
+    filename = f"{primary}_{server}.txt"
+    content = f"{id} {operation} {message} {iscommitted}" + '\n'
+    with open(os.path.join(path, filename), "a+") as fp:
+        fp.write(content)
+    
     print('bye', flush= True)
     fp.close()
 
@@ -281,7 +354,7 @@ def write_data_handler(server_id):
             else:
                 secondary_servers.append(i)
         print('before log write', flush=True)
-        # write_to_log(int(id),shard,primary_server,data,0) 
+        write_to_log(int(id),"write",shard,primary_server,data,0) 
         print('log write complete', flush=True)
         print(secondary_servers, flush=True)
 
@@ -292,14 +365,15 @@ def write_data_handler(server_id):
         }
         commits_count = 0
         for server in secondary_servers:
-            # write_to_log(int(id),shard,server,data,0) 
+            write_to_log(int(id),"write",shard,server,data,0) 
             print('server calling..')
             print(f"calling server {server}",flush=True)
             config_response = requests.post(f"http://{server}:5000/write1/{server}", json=write_payload).json()
             print(f"secondary : {server} {config_response} {secondary_servers}", flush=True)
+            print("response ",config_response,flush=True)
             if config_response['status'] == "success":
                 commits_count+=1
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"write",shard,server,data,1) 
                 print(f"Success: Config response status code for {server} is 200")
             else:
                 print(f"something went wrong with {server}, {shard}")
@@ -307,9 +381,9 @@ def write_data_handler(server_id):
         if(commits_count>=len(secondary_servers)//2 or True):
             print(f'primary server {primary_server}', flush=True)
             config_response = requests.post(f"http://{primary_server}:5000/write1/{primary_server}", json=write_payload).json()
-            print(f'In primary {config_response}', flush=True)
+            # print(f'In primary {config_response}', flush=True)
             if config_response['status'] == "success":
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"write",shard,primary_server,data,1) 
                 print(f"Success: Config response status code for {server} is 200")
                 return config_response
             else:
@@ -396,9 +470,7 @@ def update_data_entry_endpoint_helper(server_id):
                 primary_server = i
             else:
                 secondary_servers.append(i)
-        print('before log write', flush=True)
-        # write_to_log(int(id),shard,primary_server,data,0) 
-        print('log write complete', flush=True)
+       
         print(secondary_servers, flush=True)
 
         write_payload = {
@@ -406,16 +478,21 @@ def update_data_entry_endpoint_helper(server_id):
             'Stud_id' : Stud_id,
             'data': data
         }
+
+        print('before log write', flush=True)
+        write_to_log(int(id),"update",shard,primary_server,write_payload,0) 
+        print('log write complete', flush=True)
+
         commits_count = 0
         for server in secondary_servers:
-            # write_to_log(int(id),shard,server,data,0) 
+            write_to_log(int(id),"update",shard,server,write_payload,0) 
             print('server calling..')
             print(f"calling server {server}",flush=True)
             config_response = requests.put(f"http://{server}:5000/update1/{server}", json=write_payload).json()
             print(f"secondary : {server} {config_response} {secondary_servers}", flush=True)
             if config_response['status'] == "success":
                 commits_count+=1
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"update",shard,server,write_payload,1) 
                 print(f"Success: Config response status code for {server} is 200")
             else:
                 print(f"something went wrong with {server}, {shard}")
@@ -425,7 +502,7 @@ def update_data_entry_endpoint_helper(server_id):
             config_response = requests.put(f"http://{primary_server}:5000/update1/{primary_server}", json=write_payload).json()
             print(f'In primary {config_response}', flush=True)
             if config_response['status'] == "success":
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"update",shard,primary_server,write_payload,1) 
                 print(f"Success: Config response status code for {server} is 200")
                 return config_response
             else:
@@ -519,25 +596,28 @@ def delete_data_entry_endpoint_helper(server_id):
                 primary_server = i
             else:
                 secondary_servers.append(i)
-        print('before log write', flush=True)
-        # write_to_log(int(id),shard,primary_server,data,0) 
-        print('log write complete', flush=True)
+        
+        
+       
         print(secondary_servers, flush=True)
 
         write_payload = {
             "shard": shard,
             'Stud_id' : Stud_id,
         }
+        print('before log write', flush=True)
+        write_to_log(int(id),"del",shard,primary_server,write_payload,0) 
+        print('log write complete', flush=True)
         commits_count = 0
         for server in secondary_servers:
-            # write_to_log(int(id),shard,server,data,0) 
+            write_to_log(int(id),"del",shard,server,write_payload,0) 
             print('server calling..')
             print(f"calling server {server}",flush=True)
             config_response = requests.delete(f"http://{server}:5000/del1/{server}", json=write_payload).json()
             print(f"secondary : {server} {config_response} {secondary_servers}", flush=True)
             if config_response['status'] == "success":
                 commits_count+=1
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"del",shard,server,write_payload,1) 
                 print(f"Success: Config response status code for {server} is 200")
             else:
                 print(f"something went wrong with {server}, {shard}")
@@ -547,7 +627,7 @@ def delete_data_entry_endpoint_helper(server_id):
             config_response = requests.delete(f"http://{primary_server}:5000/del1/{primary_server}", json=write_payload).json()
             print(f'In primary {config_response}', flush=True)
             if config_response['status'] == "success":
-                # write_to_log(int(id),shard,server,data,1) 
+                write_to_log(int(id),"del",shard,primary_server,write_payload,1) 
                 print(f"Success: Config response status code for {server} is 200")
                 return config_response
             else:
