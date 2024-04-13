@@ -18,6 +18,7 @@ from queue import Queue
 
 chash = lb.ShardHandle()
 operationCnt = 1
+all_servers = []
 
 db_config = {
     
@@ -816,6 +817,8 @@ def isPrimaryServer(shard_id, server_id, connection):
 
 # returns list of shardid corresponding to a server
 def get_shardid_given_server(connection,server):
+    if connection is None:
+        connection = mysql.connector.connect(**db_config)
     try:
         cursor = connection.cursor()
         query = f"SELECT Shard_Id from MapT where server_id = '{server}';"
@@ -869,43 +872,6 @@ def hellowrite(server_name):
             "message": str(e),
             "status": 500
         }), 500
-
-# continuously check heartbeat
-# Define the heartbeat function
-def heartbeat():
-    global list_of_servers
-    
-    connection = mysql.connector.connect(**db_config)
-    while True:
-        list_of_servers = list(set(list_of_servers))   # remove duplicates
-        
-        for server in list_of_servers:
-            try:
-                response = requests.get(f'http://{server}:5000/heartbeat')
-                if response.status_code == 200:
-                    print(f"Server {server} is up and running.",flush=True)
-                else:
-                    shard_ids = get_shardid_given_server(connection,server)
-                    list_of_servers.remove(server)
-                    print(f"Server {server} is down. Status code: {response.status_code}",flush=True)
-                    add_response = requests.post('http://127.0.0.1:5000/add', json={'n': 1,'new_shards':[],'servers':{f'{server}':shard_ids}})
-                    if add_response.status_code == 200:
-                        print("New server added successfully.")
-                    else:
-                        print("Failed to add a new server.")
-            except requests.ConnectionError:
-                print(f"Failed to connect to server {server}.",flush=True)
-                shard_ids = get_shardid_given_server(connection,server)
-                list_of_servers.remove(server)
-                add_response = requests.post('http://127.0.0.1:5000/add', json={'n': 1,'new_shards':[],'servers':{f'{server}':shard_ids}})
-                if add_response.status_code == 200:
-                    print("New server added successfully.")
-                else:
-                    print("Failed to add a new server.")
-                
-        time.sleep(5)  # Wait for 5 seconds before checking again
-
-
 
 
 @app.errorhandler(404)
