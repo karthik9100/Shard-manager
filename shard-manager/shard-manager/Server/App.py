@@ -93,6 +93,13 @@ def read_log():
         with open(os.path.join(path, filename), "r") as fp:
             data = fp.read()
         
+        print('entire data is ', data, flush=True)
+        data = data.strip().split("\n")
+        print('first data is ', data, flush=True)
+        data = data[-1]
+        data = data.strip().split(" ")[0]
+        print('final data is ', data, flush=True)
+        
         msg = {
             "message": data,
             "status": "Successful"
@@ -112,7 +119,7 @@ def read_log():
         return make_response(jsonify(msg), 500)
     
 
-def initialize_shard_tables(payload,server_id):
+def initialize_shard_tables(payload,server_id,operationCnt):
     print("initialize",server_id,flush=True)
     db_config['host'] = server_id
     try:
@@ -145,7 +152,8 @@ def initialize_shard_tables(payload,server_id):
             cursor.execute(create_table_query)
 
         connection.commit()
-
+        
+        write_to_log(operationCnt,"init",shard,server_id,"null",1)
         return {"message": f"{', '.join([f'{server_id}:{shard}' for shard in shards])} configured", "status": "success"}
 
     except Exception as e:
@@ -158,10 +166,10 @@ def configure_shard_tables(server_id):
 
     try:
         request_payload = request.json
-
+        operationCnt = request_payload['operationCnt']
         # Validate the payload structure
         if 'schema' in request_payload and 'shards' in request_payload:
-            response = initialize_shard_tables(request_payload,server_id)
+            response = initialize_shard_tables(request_payload,server_id,operationCnt)
             print(response, flush=True)
             return jsonify(response)
         
