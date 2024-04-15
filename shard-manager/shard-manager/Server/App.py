@@ -11,7 +11,7 @@ app = Flask(__name__)
 def heartbeat():
     msg = {
         "message": "",
-        "status" : "Successful"
+        "status" : "success"
     }
     return make_response(jsonify(msg),200)
 

@@ -224,7 +224,7 @@ def copy_shard_data_to_given_server(connection,server_id,shard_id,write_server):
 @app.route('/add', methods=['POST'])
 def add_servers():
     req_payload = request.json
-
+    print("In payload ", req_payload, flush=True)
     if 'n' in req_payload and 'new_shards' in req_payload and 'servers' in req_payload:
 
         connection = mysql.connector.connect(**db_config)
@@ -354,10 +354,11 @@ def remove_servers():
     print('removing servers..', flush=True)
     try:
         req_payload = request.json
-
+        print(req_payload, flush=True)
         if 'n' in req_payload and 'servers' in req_payload:
             n = req_payload['n']
             servers_to_remove = req_payload['servers']
+            print('servers to remove', servers_to_remove, flush=True)
 
             connection = mysql.connector.connect(**db_config)
             result = subprocess.run(["python3","Helper.py",],stdout=subprocess.PIPE, text=True, check=True)
@@ -800,6 +801,20 @@ def updatePrimaryServer(shard_id, server_id, connection):
         raise Exception(f"An error occurred while retrieving Shard IDs for Server {server_id}: {str(e)}")
 
 
+@app.route('/getServerList', methods=['GET'])
+def getServerList():
+    print('server list in heartbeat', flush=True)
+    return jsonify({"servers": list_of_servers, "status" : "success"}), 200
+    
+@app.route('/getShardIdGivenServer', methods=['GET'])
+def getShardIdGivenServer():
+
+    print('shard ids in heartbeat', flush=True)
+    server = request.args.get('server')
+   
+    shard_ids = get_shardid_given_server(None,server)
+    return jsonify({"shard_ids": shard_ids, "status" : "success"}), 200
+
 
 def isPrimaryServer(shard_id, server_id, connection):
     
@@ -824,6 +839,8 @@ def isPrimaryServer(shard_id, server_id, connection):
 
 # returns list of shardid corresponding to a server
 def get_shardid_given_server(connection,server):
+    if (connection is None):
+        connection = mysql.connector.connect(**db_config)
     try:
         cursor = connection.cursor()
         query = f"SELECT Shard_Id from MapT where server_id = '{server}';"
@@ -880,39 +897,6 @@ def hellowrite(server_name):
 
 # continuously check heartbeat
 # Define the heartbeat function
-def heartbeat():
-    global list_of_servers
-    
-    connection = mysql.connector.connect(**db_config)
-    while True:
-        list_of_servers = list(set(list_of_servers))   # remove duplicates
-        
-        for server in list_of_servers:
-            try:
-                response = requests.get(f'http://{server}:5000/heartbeat')
-                if response.status_code == 200:
-                    print(f"Server {server} is up and running.",flush=True)
-                else:
-                    shard_ids = get_shardid_given_server(connection,server)
-                    list_of_servers.remove(server)
-                    print(f"Server {server} is down. Status code: {response.status_code}",flush=True)
-                    add_response = requests.post('http://127.0.0.1:5000/add', json={'n': 1,'new_shards':[],'servers':{f'{server}':shard_ids}})
-                    if add_response.status_code == 200:
-                        print("New server added successfully.")
-                    else:
-                        print("Failed to add a new server.")
-            except requests.ConnectionError:
-                print(f"Failed to connect to server {server}.",flush=True)
-                shard_ids = get_shardid_given_server(connection,server)
-                list_of_servers.remove(server)
-                add_response = requests.post('http://127.0.0.1:5000/add', json={'n': 1,'new_shards':[],'servers':{f'{server}':shard_ids}})
-                if add_response.status_code == 200:
-                    print("New server added successfully.")
-                else:
-                    print("Failed to add a new server.")
-                
-        time.sleep(5)  # Wait for 5 seconds before checking again
-
 
 
 
