@@ -431,6 +431,24 @@ def remove_servers():
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
+def read_from_shard(connection,shard_id,mapping_serverid,range_data):
+    if shard_id not in shard_locks:
+        shard_locks[shard_id] = ReaderWriterLock()
+    shard_locks[shard_id].acquire_read()
+    try:
+        # print(f"lock_acquired by {shard_id} on read request",flush=True)
+        config_payload = {
+            "shard": shard_id,
+            "Stud_id" : range_data  
+        }
+        config_response = requests.post(f"http://{mapping_serverid}:5000/read/{mapping_serverid}", json=config_payload).json()
+        data=config_response['data']
+
+        # print("",config_response)
+        print(shard_id, data, flush=True)
+        return data
+    finally:
+        shard_locks[shard_id].release_read()
 
 
 @app.route("/read", methods=["POST"])
