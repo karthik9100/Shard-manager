@@ -9,6 +9,8 @@ _Load Balancer is a server that routes all the incoming requests to the availabl
 # Prerequisites
 **1 .Docker version 24.0.7, build afdd53b**
 
+
+
 sudo apt-get update
 
 sudo apt-get install ca-certificates curl gnupg lsb-release
