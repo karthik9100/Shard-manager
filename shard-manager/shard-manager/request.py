@@ -18,40 +18,6 @@ def generate_name():
     name = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz', k=6))
     return name
 
-
-async def send_10k_write_req(no_of_requests):
-    
-    url_write = "http://127.0.0.1:5000/write"
-    cnt, existing_ids = 0, set()
-    start_time = time.time()
-
-    while (cnt < no_of_requests):
-        n = random.randint(1, 3)
-        temp, write_payload = {}, {}
-        write_payload['data'] = []
-
-        for i in range(n):
-            sid = generate_unique_id()
-            existing_ids.add(sid)
-            sname = generate_name()
-            smarks = random.randint(0, 101)
-
-            temp['Stud_id'] = sid
-            temp['Stud_marks'] = smarks
-            temp['Stud_name'] = sname
-            
-            write_payload['data'].append(temp.copy())
-            temp.clear()
- 
-        async with aiohttp.ClientSession() as session:
-            tasks = [make_request(session, 'POST', url_write, payload = write_payload)]
-            responses = await asyncio.gather(*tasks)
-        cnt += 1
-
-    write_time = time.time() - start_time
-    print(f'write speed for {no_of_requests} requests: ', write_time)
-
-
 async def send_10k_read_req(no_of_requests):
     
     url_read = "http://127.0.0.1:5000/read"
@@ -81,6 +47,38 @@ async def send_10k_read_req(no_of_requests):
         cnt += 1
 
     print(f'read speed for {no_of_requests} requests: ', read_time)
+
+
+async def send_10k_write_req(no_of_requests):
+    
+    url_write = "http://127.0.0.1:5000/write"
+    cnt, existing_ids = 0, set()
+    start_time = time.time()
+    while (cnt < no_of_requests):
+        n = random.randint(1, 3)
+        temp, write_payload = {}, {}
+        write_payload['data'] = []
+
+        for i in range(n):
+            sid = generate_unique_id()
+            existing_ids.add(sid)
+            sname = generate_name()
+            smarks = random.randint(0, 101)
+
+            temp['Stud_id'] = sid
+            temp['Stud_marks'] = smarks
+            temp['Stud_name'] = sname
+            
+            write_payload['data'].append(temp.copy())
+            temp.clear()
+ 
+        async with aiohttp.ClientSession() as session:
+            tasks = [make_request(session, 'POST', url_write, payload = write_payload)]
+            responses = await asyncio.gather(*tasks)
+        cnt += 1
+
+    write_time = time.time() - start_time
+    print(f'write speed for {no_of_requests} requests: ', write_time)
 
 
 async def main():
