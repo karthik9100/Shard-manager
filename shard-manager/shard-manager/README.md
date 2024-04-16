@@ -80,7 +80,7 @@ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
 
    ## App.py
-      -> It has 8 endpoints (add, rem, rep, <path>)
+      -> It has 8 endpoints (init,comfig,add,rem,read,del,write,update,status)
       
       -> add 
          is post request which accepts two parameters n, replicas
@@ -96,8 +96,8 @@ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
       -> rep 
          is a GET request
-         you can send this request using  ** POSTMAN ** using the below request of GET method
-                     http://127.0.0.1:5000/rep
-                     returns all available servers
+         you can send this request using  ** POSTMAN ** using the below request of POST method
+                     http://127.0.0.1:5000/read with corresponding payload contains the range of data we want to read from student database
+                     
 
 
