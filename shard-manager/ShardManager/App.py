@@ -56,6 +56,12 @@ def heartbeat():
                 if response.get('status') == 'success':
                     print(f"Server {server} is up and running.",flush=True)
                 else:
+                    time.sleep(10)
+                    response = requests.get('http://lbserver1:5000/getServerList').json()
+                    updated_list_of_servers = response['servers']  # remove duplicates
+                    if server not in updated_list_of_servers:
+                        continue
+
                     
                     list_of_servers.remove(server)
                     response = requests.delete('http://lbserver1:5000/rm', json= {'n':1, 'server':[server]})
@@ -69,7 +75,15 @@ def heartbeat():
                     else:
                         print("Failed to add a new server.")
             except requests.ConnectionError:
-                print(f"Failed to connect to server {server}.",flush=True)
+
+                time.sleep(10)
+                response = requests.get('http://lbserver1:5000/getServerList').json()
+                updated_list_of_servers = response['servers']  # remove duplicates
+                if server not in updated_list_of_servers:
+                    continue
+
+
+                #print(f"Failed to connect to server {server}.",flush=True)
                 response = requests.delete('http://lbserver1:5000/rm', json= {'n':1, 'servers':[server]}).json()
                 print(response, flush=True)
                 list_of_servers.remove(server)
