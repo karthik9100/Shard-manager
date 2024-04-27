@@ -27,6 +27,7 @@ def primary_election():
             except Exception as e :
                 print("error is ", e, flush=True)
             
+            
             currentOperations = int(last_operation)
             if (currentOperations > maxOperations):
                 maxOperations = currentOperations

@@ -148,12 +148,13 @@ def initialize_shard_tables(payload,server_id,operationCnt):
                 );
             '''
             print(f"created table {table_name}", flush=True)
+            write_to_log(operationCnt,"init",shard,server_id,"null",1)
             # print(create_table_query,flush=True)
             cursor.execute(create_table_query)
 
         connection.commit()
         
-        write_to_log(operationCnt,"init",shard,server_id,"null",1)
+        # write_to_log(operationCnt,"init",shard,server_id,"null",1)
         return {"message": f"{', '.join([f'{server_id}:{shard}' for shard in shards])} configured", "status": "success"}
 
     except Exception as e:

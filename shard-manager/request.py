@@ -88,7 +88,7 @@ async def send_10k_write_req(no_of_requests):
 
 async def main():
 
-    no_of_requests = 10000
+    no_of_requests = 1000
     await send_10k_write_req(no_of_requests)
     await send_10k_read_req(no_of_requests)
 

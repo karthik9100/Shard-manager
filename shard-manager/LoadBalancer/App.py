@@ -399,7 +399,12 @@ def remove_servers():
                         
                         if (len(servers_list) == 0):
                             print('Cannot remove server...', flush=True)
-                            return jsonify({"message": {"No replica of servers"}, "status": "failure"}), 300
+                            msg = {
+                                "message":"<Error>  No replica of servers",
+                                "status" : "Faliure"
+                            }
+                            return make_response(jsonify(msg),400)
+                            # return jsonify({"message": {"No replica of servers"}, "status": "failure"}), 300
                         
                         response = requests.get(f"http://manager1:5000/primary_elect", params=params).json()
                         print('response is ', response, flush=True)
