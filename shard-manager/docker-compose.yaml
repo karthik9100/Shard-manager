@@ -1,0 +1,71 @@
+version: "3.9"
+services:
+  LoadBalancer:
+    build: ./LoadBalancer # Path to the Dockerfile
+    image: loadbalancer
+    container_name: lbserver1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "5000:5000" # Exposing port to host
+    privileged: true # This should be true to share the docker daemon
+    networks:
+      net1:
+        aliases:
+          - lbserver1
+
+  service_server1:
+    build: ./Server # Path to the Dockerfile
+    image: mysqlserver
+    container_name: mainserver
+    depends_on:
+      - LoadBalancer
+    ports:
+      - "5001:5000" # Exposing port to host
+    # depends_on:
+    #   - mysql
+    networks:
+      net1:
+        aliases:
+          - server1
+
+  shard_manager:
+    build: ./ShardManager # Path to the Dockerfile
+    image: my_shard_manager
+    container_name: manager1
+    depends_on:
+      - LoadBalancer
+    ports:
+      - "5002:5000" # Exposing port to host
+    # depends_on:
+    #   - mysql
+    # volumes:
+    #   - shared_data:/docker-entrypoint-initdb.d 
+    networks:
+      net1:
+        aliases:
+          - manager1
+
+    environment:
+      server_id: 100 # Environment variables accessed with os.environ[’VAR1’].
+      no_of_servers: 1
+    
+  
+  # mysql:
+  #   image: mysql:latest
+  #   container_name: mysql_container2
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: abc
+  #     MYSQL_DATABASE: STUDENT
+  #   networks:
+  #     net1:
+  #       aliases:
+  #         - mysql
+
+
+networks:
+  net1: 
+    driver: bridge
+
+
+ 
